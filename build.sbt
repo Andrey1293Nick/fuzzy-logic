@@ -7,3 +7,8 @@ lazy val root = (project in file("."))
     name := "fuzzy-logic-demo",
     idePackagePrefix := Some("hidewise.fuzzy_logic")
   )
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test
+    )
+  )
