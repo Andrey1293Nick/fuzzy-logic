@@ -2,7 +2,7 @@ package hidewise.fuzzy_logic
 
 // todo сделать тип с валидацией
 opaque type FuzzyValue = Double
-type FuzzyElement[+A] = (A, FuzzyValue)
+opaque type FuzzyElement[+A] = (A, FuzzyValue)
 
 object FuzzyValue {
 
@@ -14,6 +14,15 @@ object FuzzyValue {
     }
 
   private[fuzzy_logic] def unsafe(value: Double): FuzzyValue = value
+
+  val ZERO: FuzzyValue = 0.0
+  val ONE: FuzzyValue = 1.0
+
+  extension(fValue: FuzzyValue)
+    def unwrap: Double = fValue
+    def >(other: FuzzyValue): Boolean = fValue > other
+    def <(other: FuzzyValue): Boolean = fValue < other
+
 }
 
 sealed trait InvalidFuzzyValue
@@ -24,3 +33,12 @@ object InvalidFuzzyValue:
   case object GreaterOne extends InvalidFuzzyValue
 
 end InvalidFuzzyValue
+
+object FuzzyElement {
+
+  def apply[A](value:(A, FuzzyValue)): FuzzyElement[A] = value
+
+  extension [A](e: FuzzyElement[A])
+    def value: A = e._1
+    def membership: FuzzyValue = e._2
+}
