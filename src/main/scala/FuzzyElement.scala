@@ -6,6 +6,9 @@ opaque type FuzzyElement[+A] = (A, FuzzyValue)
 
 object FuzzyValue {
 
+  val ZERO: FuzzyValue = 0.0
+  val ONE:  FuzzyValue = 1.0
+
   def apply(value: Double): Either[InvalidFuzzyValue, FuzzyValue] =
     value match {
       case v if v >= 0 && v <= 1 => Right(value)
@@ -15,10 +18,7 @@ object FuzzyValue {
 
   private[fuzzy_logic] def unsafe(value: Double): FuzzyValue = value
 
-  val ZERO: FuzzyValue = 0.0
-  val ONE: FuzzyValue = 1.0
-
-  extension(fValue: FuzzyValue)
+  extension (fValue: FuzzyValue)
     def unwrap: Double = fValue
     def >(other: FuzzyValue): Boolean = fValue > other
     def <(other: FuzzyValue): Boolean = fValue < other
@@ -36,7 +36,7 @@ end InvalidFuzzyValue
 
 object FuzzyElement {
 
-  def apply[A](value:(A, FuzzyValue)): FuzzyElement[A] = value
+  def apply[A](value: (A, FuzzyValue)): FuzzyElement[A] = value
 
   extension [A](e: FuzzyElement[A])
     def value: A = e._1

@@ -12,7 +12,8 @@ sealed trait FuzzyCollection[+A] extends Iterable[FuzzyElement[A]] {
   @inline def add[B >: A](elem: FuzzyElement[B]):           FuzzyCollection[B]
   @inline def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B]
 
-  @inline def +[B >: A](elem: FuzzyElement[B]): FuzzyCollection[B] = add(elem)
+  @inline def +[B >: A](elem:  FuzzyElement[B]):    FuzzyCollection[B] = add(elem)
+  @inline def ++[B >: A](elem: FuzzyCollection[B]): FuzzyCollection[B] = add(elem)
 }
 
 case object FuzzyEmptyCollection extends FuzzyCollection[Nothing] {
@@ -45,8 +46,8 @@ class FuzzyList[A](
 
       override def hasNext: Boolean = {
         current match {
-          case _: FuzzyList[_] => true
-          case FuzzyEmptyCollection   => false
+          case _: FuzzyList[_]      => true
+          case FuzzyEmptyCollection => false
         }
       }
 
@@ -70,14 +71,10 @@ class FuzzyList[A](
   override def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = recursiveUnion(fCollection, this)
 
   @tailrec
-  private def recursiveUnion[B >: A](fCollection: FuzzyCollection[B], list: FuzzyCollection[B]): FuzzyCollection[B] =
+  private def recursiveUnion[B >: A](acc: FuzzyCollection[B], list: FuzzyCollection[B]): FuzzyCollection[B] =
     list match {
-      case FuzzyEmptyCollection => fCollection
-      case fuzzyList: FuzzyList[A] =>
-        fuzzyList._tail match {
-          case FuzzyEmptyCollection   => fCollection.add(fuzzyList._head)
-          case l: FuzzyList[A] => recursiveUnion(fCollection.add(fuzzyList._head), l)
-        }
+      case FuzzyEmptyCollection    => acc
+      case fuzzyList: FuzzyList[B] => recursiveUnion(acc.add(fuzzyList._head), fuzzyList._tail)
     }
 
 }
