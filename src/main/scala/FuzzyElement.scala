@@ -9,19 +9,20 @@ object FuzzyValue {
   val ZERO: FuzzyValue = 0.0
   val ONE:  FuzzyValue = 1.0
 
-  def apply(value: Double): Either[InvalidFuzzyValue, FuzzyValue] =
+  @inline def apply(value: Double): Either[InvalidFuzzyValue, FuzzyValue] =
     value match {
       case v if v >= 0 && v <= 1 => Right(value)
       case v if v < 0            => Left(InvalidFuzzyValue.LessZero)
       case v if v > 1            => Left(InvalidFuzzyValue.GreaterOne)
     }
 
-  private[fuzzy_logic] def unsafe(value: Double): FuzzyValue = value
+  @inline private[fuzzy_logic] def unsafe(value: Double): FuzzyValue = value
 
   extension (fValue: FuzzyValue)
-    def unwrap: Double = fValue
-    def >(other: FuzzyValue): Boolean = fValue > other
-    def <(other: FuzzyValue): Boolean = fValue < other
+    @inline def unwrap: Double = fValue
+    @inline def >(other: FuzzyValue): Boolean = fValue > other
+    @inline def <(other: FuzzyValue): Boolean = fValue < other
+    @inline def -(other: Double): FuzzyValue = fValue - other
 
 }
 
@@ -36,9 +37,12 @@ end InvalidFuzzyValue
 
 object FuzzyElement {
 
-  def apply[A](value: (A, FuzzyValue)): FuzzyElement[A] = value
+  @inline def apply[A](value: (A, FuzzyValue)): FuzzyElement[A] = value
 
   extension [A](e: FuzzyElement[A])
-    def value: A = e._1
-    def membership: FuzzyValue = e._2
+    @inline def value: A = e._1
+    @inline def membership: FuzzyValue = e._2
+    @inline def negate: FuzzyElement[A] = FuzzyElement(e.value, 1.0 - e.membership)
+    @inline def unary_! : FuzzyElement[A] = negate
+
 }

@@ -47,6 +47,45 @@ class FuzzyListSpec extends AnyFlatSpec with Matchers {
     res.toSet.map(_.value) shouldBe (seq :+ 6.0).toSet
     res.size shouldBe 6
   }
+
+  it should "union" in {
+    val seq = Seq(1.0, 2.0, 3.0, 4.0, 5.0)
+    val fun = FuzzyListSpec.membershipFunction
+
+    val fuzzy = seq.toFuzzy(fun)
+
+    val seqStr = Seq("A1","B12","C123")
+    val fuzzyStr = seqStr.toFuzzy(_.length)(fun)
+
+    val res = fuzzy.union(fuzzyStr)
+
+    res.size shouldBe seq.size + seqStr.size
+  }
+
+  it should "map" in {
+    val seq = Seq(1.0, 2.0)
+    val fun = FuzzyListSpec.membershipFunction
+
+    val fuzzy = seq.toFuzzy(fun)
+
+    val res = fuzzy.map{(v ) =>
+      FuzzyElement(s"test ${v.value}", FuzzyValue.ZERO)
+    }
+    res.size shouldBe 2
+    res.toSeq shouldBe Seq(FuzzyElement("test 1.0",FuzzyValue.ZERO), FuzzyElement("test 2.0",FuzzyValue.ZERO))
+  }
+  it should "flatMap" in {
+    val seq = Seq(1.0, 2.0)
+    val fun = FuzzyListSpec.membershipFunction
+
+    val fuzzy = seq.toFuzzy(fun)
+
+    val res = fuzzy.flatMap {(v ) =>
+      FuzzyList(FuzzyElement(s"test ${v.value}", FuzzyValue.ZERO), FuzzyEmptyCollection)
+    }
+    res.size shouldBe 2
+    res.toSeq shouldBe Seq(FuzzyElement("test 1.0",FuzzyValue.ZERO), FuzzyElement("test 2.0",FuzzyValue.ZERO))
+  }
 }
 
 object FuzzyListSpec {

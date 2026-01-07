@@ -4,16 +4,22 @@ import scala.annotation.tailrec
 
 sealed trait FuzzyCollection[+A] extends Iterable[FuzzyElement[A]] {
 
-  @inline def isNormal: Boolean
+  def isNormal: Boolean
 
-  @inline def union[B >: A](fCollection: FuzzyCollection[B]):     FuzzyCollection[B]
-  @inline def intersect[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B]
+  def union[B](fCollection: FuzzyCollection[B]):     FuzzyCollection[A | B]
+  def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A & B]
 
-  @inline def add[B >: A](elem: FuzzyElement[B]):           FuzzyCollection[B]
-  @inline def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B]
+  def add[B >: A](elem: FuzzyElement[B]):           FuzzyCollection[B]
+  def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B]
 
-  @inline def +[B >: A](elem:  FuzzyElement[B]):    FuzzyCollection[B] = add(elem)
-  @inline def ++[B >: A](elem: FuzzyCollection[B]): FuzzyCollection[B] = add(elem)
+  def +[B >: A](elem:  FuzzyElement[B]):    FuzzyCollection[B] = add(elem)
+  def ++[B >: A](elem: FuzzyCollection[B]): FuzzyCollection[B] = add(elem)
+
+  def map[B](f: FuzzyElement[A] => FuzzyElement[B]):        FuzzyCollection[B]
+  def flatMap[B](f: FuzzyElement[A] => FuzzyCollection[B]): FuzzyCollection[B]
+//  def filter(f: FuzzyElement[A] => Boolean): FuzzyCollection[A]
+  def complement: FuzzyCollection[A]
+
 }
 
 case object FuzzyEmptyCollection extends FuzzyCollection[Nothing] {
@@ -23,16 +29,22 @@ case object FuzzyEmptyCollection extends FuzzyCollection[Nothing] {
 
   override def union[B >: Nothing](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = fCollection
 
-  override def intersect[B >: Nothing](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = this
-
   override def add[B >: Nothing](elem: FuzzyElement[B]): FuzzyCollection[B] = FuzzyList(elem, FuzzyEmptyCollection)
 
   override def add[B >: Nothing](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = fCollection
+
+  override def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[Nothing & B] = this
+
+  override def complement: FuzzyCollection[Nothing] = this
+
+  override def map[B](f: FuzzyElement[Nothing] => FuzzyElement[B]): FuzzyCollection[B] = this
+
+  override def flatMap[B](f: FuzzyElement[Nothing] => FuzzyCollection[B]): FuzzyCollection[B] = this
 }
 
 class FuzzyList[A](
   private val _head: FuzzyElement[A],
-  val _tail:         FuzzyCollection[A])
+  private val _tail: FuzzyCollection[A])
     extends FuzzyCollection[A] {
 
   override def isNormal: Boolean =
@@ -62,13 +74,35 @@ class FuzzyList[A](
         }
     }
 
-  override def union[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = add(fCollection)
-
-  override def intersect[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = ???
+  override def union[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A | B] = {
+    recursiveUnion(fCollection, this)
+  }
 
   override def add[B >: A](elem: FuzzyElement[B]): FuzzyCollection[B] = FuzzyList(elem, this)
 
   override def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = recursiveUnion(fCollection, this)
+
+  // todo can add a composition function A & B?
+  override def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A & B] = ???
+
+  override def complement: FuzzyCollection[A] = this.map((v: FuzzyElement[A]) => !v)
+
+  override def map[B](f: FuzzyElement[A] => FuzzyElement[B]): FuzzyCollection[B] =
+    recursionMap(this, FuzzyEmptyCollection, f)
+
+  override def flatMap[B](f: FuzzyElement[A] => FuzzyCollection[B]): FuzzyCollection[B] =
+    recursiveFlatMap(this, FuzzyEmptyCollection, f)
+
+  @tailrec
+  private def recursiveFlatMap[B](
+    tail: FuzzyCollection[A],
+    acc:  FuzzyCollection[B],
+    f:    FuzzyElement[A] => FuzzyCollection[B]
+  ): FuzzyCollection[B] =
+    tail match {
+      case FuzzyEmptyCollection => acc
+      case fList: FuzzyList[A]  => recursiveFlatMap(fList._tail, f(fList._head) ++ acc, f)
+    }
 
   @tailrec
   private def recursiveUnion[B >: A](acc: FuzzyCollection[B], list: FuzzyCollection[B]): FuzzyCollection[B] =
@@ -77,6 +111,16 @@ class FuzzyList[A](
       case fuzzyList: FuzzyList[B] => recursiveUnion(acc.add(fuzzyList._head), fuzzyList._tail)
     }
 
+  @tailrec
+  private def recursionMap[B](
+    tail: FuzzyCollection[A],
+    acc:  FuzzyCollection[B],
+    f:    FuzzyElement[A] => FuzzyElement[B]
+  ): FuzzyCollection[B] =
+    tail match {
+      case FuzzyEmptyCollection => acc
+      case fList: FuzzyList[A]  => recursionMap(fList._tail, FuzzyList(f(fList._head), acc), f)
+    }
 }
 
 object FuzzyCollection {
