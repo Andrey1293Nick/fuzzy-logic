@@ -49,7 +49,7 @@ class FuzzyList[A](
 
   override def isNormal: Boolean =
     !iterator.exists { (v: FuzzyElement[A]) =>
-      v.membership > FuzzyValue.ZERO
+      v.membership > FuzzyValue.ONE
     }
 
   override def iterator: Iterator[FuzzyElement[A]] =
