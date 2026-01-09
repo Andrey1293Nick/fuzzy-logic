@@ -2,12 +2,15 @@ package hidewise.fuzzy_logic
 
 import scala.annotation.tailrec
 
-sealed trait FuzzyCollection[+A] extends Iterable[FuzzyElement[A]] {
+sealed trait FuzzyCollection[+A] /*extends Iterable[FuzzyElement[A]]*/ {
 
   def isNormal: Boolean
 
-  def union[B](fCollection: FuzzyCollection[B]):     FuzzyCollection[A | B]
-  def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A & B]
+  def iterator: Iterator[FuzzyElement[A]]
+  def union[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]):     FuzzyCollection[B]
+//  def union[B](fCollection: FuzzyCollection[B]):     FuzzyCollection[A | B]
+  def intersect[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[B]
+//  def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A & B]
 
   def add[B >: A](elem: FuzzyElement[B]):           FuzzyCollection[B]
   def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B]
@@ -17,29 +20,33 @@ sealed trait FuzzyCollection[+A] extends Iterable[FuzzyElement[A]] {
 
   def map[B](f: FuzzyElement[A] => FuzzyElement[B]):        FuzzyCollection[B]
   def flatMap[B](f: FuzzyElement[A] => FuzzyCollection[B]): FuzzyCollection[B]
-//  def filter(f: FuzzyElement[A] => Boolean): FuzzyCollection[A]
+  def filter(f: FuzzyElement[A] => Boolean): FuzzyCollection[A]
   def complement: FuzzyCollection[A]
-
+  def boundedSum[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]) : FuzzyCollection[B]
 }
 
 case object FuzzyEmptyCollection extends FuzzyCollection[Nothing] {
 
   override def isNormal: Boolean                         = true
-  override def iterator: Iterator[FuzzyElement[Nothing]] = Iterator.empty
+  def iterator: Iterator[FuzzyElement[Nothing]] = Iterator.empty
 
-  override def union[B >: Nothing](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = fCollection
+  override def union[B >: Nothing](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[B] = fCollection
 
   override def add[B >: Nothing](elem: FuzzyElement[B]): FuzzyCollection[B] = FuzzyList(elem, FuzzyEmptyCollection)
 
   override def add[B >: Nothing](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = fCollection
 
-  override def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[Nothing & B] = this
+  override def intersect[B](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[Nothing & B] = this
 
   override def complement: FuzzyCollection[Nothing] = this
 
   override def map[B](f: FuzzyElement[Nothing] => FuzzyElement[B]): FuzzyCollection[B] = this
 
   override def flatMap[B](f: FuzzyElement[Nothing] => FuzzyCollection[B]): FuzzyCollection[B] = this
+
+  override def boundedSum[B >: Nothing](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[Nothing | B] = fCollection
+
+  override def filter(f: (FuzzyElement[Nothing]) => Boolean): FuzzyCollection[Nothing] = this
 }
 
 class FuzzyList[A](
@@ -52,7 +59,7 @@ class FuzzyList[A](
       v.membership > FuzzyValue.ONE
     }
 
-  override def iterator: Iterator[FuzzyElement[A]] =
+  def iterator: Iterator[FuzzyElement[A]] =
     new Iterator[FuzzyElement[A]] {
       private var current: FuzzyCollection[A] = FuzzyList.this
 
@@ -74,16 +81,19 @@ class FuzzyList[A](
         }
     }
 
-  override def union[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A | B] = {
-    recursiveUnion(fCollection, this)
+  override def union[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[ B] = {
+    recursiveMerger(fCollection, this)
   }
+//  override def union[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A | B] = {
+//    recursiveUnion(fCollection, this)
+//  }
 
   override def add[B >: A](elem: FuzzyElement[B]): FuzzyCollection[B] = FuzzyList(elem, this)
 
-  override def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = recursiveUnion(fCollection, this)
+  override def add[B >: A](fCollection: FuzzyCollection[B]): FuzzyCollection[B] = recursiveMerger(fCollection, this)
 
   // todo can add a composition function A & B?
-  override def intersect[B](fCollection: FuzzyCollection[B]): FuzzyCollection[A & B] = ???
+  override def intersect[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[ B] = ???
 
   override def complement: FuzzyCollection[A] = this.map((v: FuzzyElement[A]) => !v)
 
@@ -105,10 +115,10 @@ class FuzzyList[A](
     }
 
   @tailrec
-  private def recursiveUnion[B >: A](acc: FuzzyCollection[B], list: FuzzyCollection[B]): FuzzyCollection[B] =
+  private def recursiveMerger[B >: A](acc: FuzzyCollection[B], list: FuzzyCollection[B]): FuzzyCollection[B] =
     list match {
       case FuzzyEmptyCollection    => acc
-      case fuzzyList: FuzzyList[B] => recursiveUnion(acc.add(fuzzyList._head), fuzzyList._tail)
+      case fuzzyList: FuzzyList[B] => recursiveMerger(acc.add(fuzzyList._head), fuzzyList._tail)
     }
 
   @tailrec
@@ -121,6 +131,18 @@ class FuzzyList[A](
       case FuzzyEmptyCollection => acc
       case fList: FuzzyList[A]  => recursionMap(fList._tail, FuzzyList(f(fList._head), acc), f)
     }
+
+  override def boundedSum[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[B] = {
+
+    ???
+  }
+
+  override def filter(f: FuzzyElement[A] => Boolean): FuzzyCollection[A] = {
+    this.flatMap{ (v: FuzzyElement[A]) =>
+      if (f(v)) this
+      else FuzzyEmptyCollection
+    }
+  }
 }
 
 object FuzzyCollection {

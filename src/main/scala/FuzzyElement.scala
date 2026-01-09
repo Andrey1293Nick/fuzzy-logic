@@ -23,7 +23,13 @@ object FuzzyValue {
     @inline def >(other: FuzzyValue): Boolean = fValue > other
     @inline def <(other: FuzzyValue): Boolean = fValue < other
     @inline def -(other: Double): FuzzyValue = fValue - other
-
+    @inline def unary_! : FuzzyValue = 1.0 - fValue
+//    @inline def and(other: FuzzyValue)(using L: FuzzyLogic): FuzzyValue = L.t(fValue, other)
+//    @inline def or(other:  FuzzyValue)(using L: FuzzyLogic): FuzzyValue = L.s(fValue, other)
+//    @inline def &&(other: FuzzyValue)(using L: FuzzyLogic): FuzzyValue =
+//      L.t(fValue, other)
+//    @inline def ||(other: FuzzyValue)(using L: FuzzyLogic): FuzzyValue =
+//      L.s(fValue, other)
 }
 
 sealed trait InvalidFuzzyValue
@@ -44,5 +50,4 @@ object FuzzyElement {
     @inline def membership: FuzzyValue = e._2
     @inline def negate: FuzzyElement[A] = FuzzyElement(e.value, 1.0 - e.membership)
     @inline def unary_! : FuzzyElement[A] = negate
-
 }
