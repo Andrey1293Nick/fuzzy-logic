@@ -139,7 +139,7 @@ class FuzzyList[A](
 
   override def filter(f: FuzzyElement[A] => Boolean): FuzzyCollection[A] = {
     this.flatMap{ (v: FuzzyElement[A]) =>
-      if (f(v)) this
+      if (f(v)) FuzzyList(v, FuzzyEmptyCollection)
       else FuzzyEmptyCollection
     }
   }
