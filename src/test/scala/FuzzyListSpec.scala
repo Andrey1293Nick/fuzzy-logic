@@ -94,6 +94,10 @@ class FuzzyListSpec extends AnyFlatSpec with Matchers {
       FuzzyElement("test 1.0", FuzzyValue.ZERO),
       FuzzyElement("test 2.0", FuzzyValue.ZERO)
     )
+
+    val res2 = fuzzy.flatMap(a => FuzzyList(a, FuzzyEmptyCollection)) == fuzzy
+    res2 shouldBe true
+
   }
   it should "filter" in {
     val seq = Seq(1.0, 2.0, 4.0, 10.0)
@@ -108,6 +112,7 @@ class FuzzyListSpec extends AnyFlatSpec with Matchers {
       FuzzyElement(10.0, FuzzyValue.unsafe(10.0))
     )
   }
+
 }
 
 object FuzzyListSpec {

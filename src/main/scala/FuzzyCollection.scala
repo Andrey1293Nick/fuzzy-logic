@@ -2,6 +2,7 @@ package hidewise.fuzzy_logic
 
 import scala.annotation.tailrec
 
+//todo починить двойной реверс в ++ flatMap/map
 sealed trait FuzzyCollection[+A] /*extends Iterable[FuzzyElement[A]]*/ {
 
   def isNormal: Boolean
@@ -23,6 +24,7 @@ sealed trait FuzzyCollection[+A] /*extends Iterable[FuzzyElement[A]]*/ {
   def filter(f: FuzzyElement[A] => Boolean): FuzzyCollection[A]
   def complement: FuzzyCollection[A]
   def boundedSum[B >: A](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]) : FuzzyCollection[B]
+  def reverse: FuzzyCollection[A]
 }
 
 case object FuzzyEmptyCollection extends FuzzyCollection[Nothing] {
@@ -47,11 +49,13 @@ case object FuzzyEmptyCollection extends FuzzyCollection[Nothing] {
   override def boundedSum[B >: Nothing](fCollection: FuzzyCollection[B])(fLogic: FuzzyLogic[B]): FuzzyCollection[Nothing | B] = fCollection
 
   override def filter(f: (FuzzyElement[Nothing]) => Boolean): FuzzyCollection[Nothing] = this
+
+  override def reverse: FuzzyCollection[Nothing] = this
 }
 
-class FuzzyList[A](
-  private val _head: FuzzyElement[A],
-  private val _tail: FuzzyCollection[A])
+case class FuzzyList[A](
+   private val _head: FuzzyElement[A],
+   private val _tail: FuzzyCollection[A])
     extends FuzzyCollection[A] {
 
   override def isNormal: Boolean =
@@ -114,12 +118,14 @@ class FuzzyList[A](
       case fList: FuzzyList[A]  => recursiveFlatMap(fList._tail, f(fList._head) ++ acc, f)
     }
 
-  @tailrec
+
   private def recursiveMerger[B >: A](acc: FuzzyCollection[B], list: FuzzyCollection[B]): FuzzyCollection[B] =
-    list match {
-      case FuzzyEmptyCollection    => acc
-      case fuzzyList: FuzzyList[B] => recursiveMerger(acc.add(fuzzyList._head), fuzzyList._tail)
+    acc match {
+      case FuzzyEmptyCollection => list
+      case l: FuzzyList[B] =>
+        FuzzyList(l._head, recursiveMerger(l._tail, list))
     }
+
 
   @tailrec
   private def recursionMap[B](
@@ -143,21 +149,23 @@ class FuzzyList[A](
       else FuzzyEmptyCollection
     }
   }
+
+  override def reverse: FuzzyCollection[A] = ???
 }
 
 object FuzzyCollection {
 
   extension (seq: Seq[Double])
-
+//todo fix reverse result
     def toFuzzy(mFunction: MembershipFunction) =
-      seq.foldLeft[FuzzyCollection[Double]](FuzzyEmptyCollection) { case (acc, value) =>
+      seq.reverse.foldLeft[FuzzyCollection[Double]](FuzzyEmptyCollection) { case (acc, value) =>
         FuzzyList(FuzzyElement(value -> mFunction(value)), acc)
       }
 
   extension [A](seq: Seq[A])
 
     def toFuzzy(f: A => Double)(mFunction: MembershipFunction): FuzzyCollection[A] =
-      seq.foldLeft[FuzzyCollection[A]](FuzzyEmptyCollection) { case (acc, value) =>
+      seq.reverse.foldLeft[FuzzyCollection[A]](FuzzyEmptyCollection) { case (acc, value) =>
         FuzzyList(FuzzyElement(value -> mFunction(f(value))), acc)
       }
 
